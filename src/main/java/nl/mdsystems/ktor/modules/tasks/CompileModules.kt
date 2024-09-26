@@ -1,59 +1,64 @@
 package nl.mdsystems.ktor.modules.tasks
 
+import nl.mdsystems.ktor.modules.config.KtorModuleConfig
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
-import org.gradle.api.file.DirectoryProperty
-import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.TaskAction
 import org.gradle.jvm.tasks.Jar
 
 /**
  * A Gradle task that compiles Ktor modules.
  *
- * This task is responsible for compiling the Ktor modules and ensuring that the necessary dependencies are available.
- * It depends on the [Jar] and [CopyDependencies] tasks to perform its actions.
+ * This task extends the DefaultTask class and is responsible for compiling the Ktor modules.
+ * It checks the configuration provided by the [KtorModuleConfig] extension and performs necessary
+ * actions such as creating the build location directory and validating the main class property.
  *
- * @property buildLocation The directory where the compiled modules will be located.
- *
- * @see Jar
- * @see CopyDependencies
+ * @see KtorModuleConfig
  */
 abstract class CompileModules : DefaultTask() {
     /**
-     * The directory where the compiled modules will be located.
+     * The main action of the task.
      *
-     * This property is annotated with `@get:InputDirectory` to indicate that it is an input directory for the task.
-     */
-    @get:InputDirectory
-    abstract val buildLocation: DirectoryProperty
-
-    /**
-     * The action to be performed by the task.
+     * This method retrieves the [KtorModuleConfig] extension from the project and performs the
+     * following checks:
+     * 1. Checks if the build location directory exists, and if not, creates it.
+     * 2. Validates that the build location is a directory.
+     * 3. Validates that the main class property is not blank.
      *
-     * This method sets up the dependencies for the task, ensuring that it runs after the [Jar] and [CopyDependencies] tasks.
+     * If any of the checks fail, an [IllegalStateException] is thrown with an appropriate error message.
      */
     @TaskAction
     fun compile() {
-        dependsOn(
-            project.tasks.withType(Jar::class.java)
-        )
+        val config = project.extensions.getByType(KtorModuleConfig::class.java)
 
-        dependsOn(
-            project.tasks.withType(CopyDependencies::class.java)
-        )
+        // Check configuration
+        if(!config.buildLocation.exists()) config.buildLocation.mkdirs()
+        if(!config.buildLocation.isDirectory) throw IllegalStateException("ktorModules.buildLocation need to be a directory!")
+        if(config.mainClass.isBlank()) throw IllegalStateException("Mainclass property cannot be empty!")
     }
-
-    /**
-     * A companion object that contains a method to register the [CompileModules] task.
-     */
+    
     companion object {
         /**
-         * Registers the [CompileModules] task with the given project.
+         * Registers the "compile" task for the given project.
          *
-         * @param project The Gradle project to register the task with.
+         * This method creates a "compile" task of type [CompileModules] and configures it to depend
+         * on the "copyDependencies" and "jar" tasks. It also sets the task group to "ktor Modules".
+         *
+         * @param project The Gradle project to register the task for.
          */
         fun registerCompileModulesTask(project: Project) {
-            project.tasks.register("ktor.modules.compile", CompileModules::class.java)
+            project.tasks.register("compile", CompileModules::class.java){
+                val config = project.extensions.getByType(KtorModuleConfig::class.java)
+                it.group = "ktor Modules"
+
+                it.dependsOn(
+                    project.tasks.withType(CopyDependencies::class.java)
+                )
+
+                it.dependsOn(
+                    project.tasks.withType(Jar::class.java)
+                )
+            }
         }
     }
 }

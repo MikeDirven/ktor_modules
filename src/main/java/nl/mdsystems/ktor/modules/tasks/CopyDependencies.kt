@@ -1,65 +1,55 @@
 package nl.mdsystems.ktor.modules.tasks
 
+import nl.mdsystems.ktor.modules.config.KtorModuleConfig
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
-import org.gradle.api.file.DirectoryProperty
-import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.TaskAction
 import java.io.File
 
 /**
- * A Gradle task that copies the runtime dependencies of a project to a specified directory.
+ * A Gradle task that copies dependencies from the runtime classpath to a specified location.
  *
- * This task is designed to be used as a part of a larger build process for a Ktor application.
- * It extends the DefaultTask class and is intended to be registered as a custom task within a Gradle project.
+ * This task is intended to be used within a Gradle project that utilizes the Ktor framework.
+ * It is registered as a custom task named "copyDependencies" and belongs to the "ktor Modules" group.
  *
- * @property buildLocation The directory where the runtime dependencies will be copied to.
- * This property is annotated with `@InputDirectory` to indicate that it is an input to the task.
- *
- * @see DefaultTask
- * @see Project
- * @see DirectoryProperty
- * @see InputDirectory
- * @see TaskAction
+ * @see CopyDependencies.copyDependencies
+ * @see CopyDependencies.registerCopyDependenciesTask
  */
 abstract class CopyDependencies : DefaultTask() {
-    @get:InputDirectory
-    abstract val buildLocation: DirectoryProperty
-
     /**
      * The main action of the task.
      *
-     * This method copies the runtime dependencies of the project to the specified `buildLocation` directory.
-     * It uses the `project.copy` function to perform the copying operation.
+     * This function retrieves the [KtorModuleConfig] extension from the project and checks if the
+     * `includeDependencies` flag is set to true. If it is, it copies all dependencies from the
+     * "runtimeClasspath" configuration to a specified location within the project's build directory.
      *
-     * @see Project.copy
-     * @see configurations.getByName
-     * @see File
+     * @see KtorModuleConfig
      */
     @TaskAction
     fun copyDependencies() {
-        project.copy {
-            it.from(project.configurations.getByName("runtimeClasspath"))
-            it.into(File(buildLocation.asFile.get(), "dependencies"))
+        val config = project.extensions.getByType(KtorModuleConfig::class.java)
+
+        if(config.includeDependencies) {
+            project.copy {
+                it.from(project.configurations.getByName("runtimeClasspath"))
+                it.into(File(config.buildLocation, "dependencies"))
+            }
         }
     }
 
     /**
-     * A companion object that contains a factory method for registering the task.
+     * A companion object that contains a function to register the "copyDependencies" task.
      *
-     * This method registers a new instance of the `CopyDependencies` task with the given `project` and `buildLocation`.
-     * The task is registered with the name "ktor.modules.copy" and is of type `CopyDependencies`.
+     * This function registers the custom task with the provided project, sets its group to "ktor Modules",
+     * and associates it with the [CopyDependencies] class.
      *
-     * @param project The Gradle project where the task will be registered.
-     * @param buildLocation The directory where the runtime dependencies will be copied to.
-     *
-     * @see Project.tasks.register
+     * @param project The Gradle project to which the task will be registered.
      * @see CopyDependencies
      */
     companion object {
-        fun registerCopyDependenciesTask(project: Project, buildLocation: File) {
-            project.tasks.register("ktor.modules.copy", CopyDependencies::class.java){
-                it.buildLocation.set(buildLocation)
+        fun registerCopyDependenciesTask(project: Project) {
+            project.tasks.register("copyDependencies", CopyDependencies::class.java){
+                it.group = "ktor Modules"
             }
         }
     }

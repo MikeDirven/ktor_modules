@@ -22,12 +22,19 @@ gradlePlugin {
     }
 }
 
-dependencies {
-    implementation(kotlin("stdlib-jdk8"))
+publishing {
+    repositories {
+        mavenLocal()
+    }
 }
 
 repositories {
     mavenCentral()
+    gradlePluginPortal()
+}
+
+dependencies {
+    implementation(kotlin("stdlib-jdk8"))
 }
 
 kotlin {

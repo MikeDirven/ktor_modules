@@ -1,56 +1,51 @@
 package nl.mdsystems.ktor.modules
 
-import nl.mdsystems.ktor.modules.config.KtorModulesConfig
+import nl.mdsystems.ktor.modules.config.KtorModuleConfig
+import nl.mdsystems.ktor.modules.extensions.*
 import nl.mdsystems.ktor.modules.tasks.*
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.jvm.tasks.Jar
 
+
 /**
- * A Gradle plugin that provides functionality for managing and building modular Ktor applications.
+ * A Gradle plugin that provides a modular structure for a Ktor application.
+ * This plugin sets up necessary configurations, tasks, and dependencies for a Ktor application.
  *
- * This plugin creates tasks for copying dependencies, compiling modules, and configuring the JAR manifest.
- *
- * @author [Your Name]
+ * @author Mike Dirven
  */
 abstract class KtorModules : Plugin<Project> {
 
     /**
-     * The configuration object for the KtorModules plugin.
-     *
-     * This object holds properties such as the build location, main class, and other configurations.
-     */
-    private lateinit var config: KtorModulesConfig
-
-    /**
      * Applies the KtorModules plugin to the given project.
      *
-     * This method initializes the configuration object, registers tasks for copying dependencies, compiling modules,
-     * and configuring the JAR manifest.
-     *
-     * @param project The Gradle project to which the plugin will be applied.
+     * @param project The Gradle project to apply the plugin to.
      */
     override fun apply(project: Project) {
-        config = project.extensions.create("ktorModules", KtorModulesConfig::class.java)
+        // Create a configuration object for the plugin
+        val config = project.extensions.create("ktorModule", KtorModuleConfig::class.java)
 
-        // Configure main tasks
-        ConfigurePlugins.registerConfigurePluginsTask(project)
-        ConfigureRepositories.registerConfigureDependenciesTask(project)
-        ConfigureDependencies.registerAddDependenciesTask(project)
+        // Add needed gradle plugins
+        addPlugins(project)
+        addRepositories(project)
+        addDependencies(project)
 
         // Configure compile tasks
-        CopyDependencies.registerCopyDependenciesTask(project, config.buildLocation)
+        CopyDependencies.registerCopyDependenciesTask(project)
         CompileModules.registerCompileModulesTask(project)
 
-        // Configure jar task
+        // Setup jar task
         project.tasks.withType(Jar::class.java) { task ->
-            if(!config.buildLocation.isDirectory) throw IllegalStateException("ktorModules.buildLocation need to be a directory!")
-            task.destinationDirectory.set(config.buildLocation)
-            task.manifest { manifest ->
-                manifest.attributes["Main-Class"] = config.mainClass.ifBlank {
-                    throw IllegalStateException("Mainclass property cannot be empty!")
+            task.doFirst {
+                // Set the destination directory for the jar file
+                task.destinationDirectory.set(config.buildLocation)
+
+                // Configure the manifest of the jar file
+                task.manifest { manifest ->
+                    // Set the main class and version attributes in the manifest
+                    manifest.attributes["Main-Class"] = config.mainClass
+                    manifest.attributes["Version"] = project.version
                 }
-                manifest.attributes["Version"] = project.version
             }
         }
     }
