@@ -8,19 +8,18 @@ group = "nl.mdsystems.ktor"
 version = "0.0.1"
 
 gradlePlugin {
+    website = "https://github.com/MikeDirven/ktor_modules"
+    vcsUrl = "https://github.com/MikeDirven/ktor_modules"
+
     plugins {
         create("ktor-modules") {
-            id = "org.example.greeting"
-            implementationClass = "nl.icsvertex.ktor.modules.KtorModules"
+            id = "nl.mdsystems.ktor.modules"
+            displayName = "Gradle plugin for ktor modules system"
+            description = "Gradle plugin to help out building the ktor modules, that have been build with the ktor modules implementation"
+            tags = listOf("ktor", "modules", "jetbrains", "plugins")
+            implementationClass = "nl.mdsystems.ktor.modules.KtorModules"
         }
     }
-}
-
-gradlePlugin {
-    website = "<substitute your project website>"
-    vcsUrl = "<uri to project source repository>"
-
-    // ...
 }
 
 dependencies {
