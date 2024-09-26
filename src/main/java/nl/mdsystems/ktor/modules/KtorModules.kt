@@ -1,10 +1,7 @@
 package nl.mdsystems.ktor.modules
 
 import nl.mdsystems.ktor.modules.config.KtorModulesConfig
-import nl.mdsystems.ktor.modules.tasks.CompileModules
-import nl.mdsystems.ktor.modules.tasks.ConfigurePlugins
-import nl.mdsystems.ktor.modules.tasks.ConfigureRepositories
-import nl.mdsystems.ktor.modules.tasks.CopyDependencies
+import nl.mdsystems.ktor.modules.tasks.*
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.jvm.tasks.Jar
@@ -39,7 +36,7 @@ abstract class KtorModules : Plugin<Project> {
         // Configure main tasks
         ConfigurePlugins.registerConfigurePluginsTask(project)
         ConfigureRepositories.registerConfigureDependenciesTask(project)
-        ConfigureRepositories.registerConfigureDependenciesTask(project)
+        ConfigureDependencies.registerAddDependenciesTask(project)
 
         // Configure compile tasks
         CopyDependencies.registerCopyDependenciesTask(project, config.buildLocation)
