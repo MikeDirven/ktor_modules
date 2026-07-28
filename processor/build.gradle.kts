@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "nl.icsvertex.ktor"
-version = "1.0.4"
+version = "1.0.10"
 
 repositories {
     mavenCentral()

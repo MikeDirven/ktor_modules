@@ -39,7 +39,7 @@ abstract class IcsModules : Plugin<Project> {
 
         // Setup ksp dependency
         project.pluginManager.withPlugin("com.google.devtools.ksp") {
-            project.dependencies.add("ksp", "nl.icsvertex.ktor:processor:1.0.3")
+            project.dependencies.add("ksp", "nl.icsvertex.ktor:processor:1.0.10")
         }
 
         // Configure compile tasks

@@ -15,40 +15,55 @@ class KtorModuleProcessor(
     private val codeGenerator: CodeGenerator,
     private val logger: KSPLogger
 ) : SymbolProcessor {
-    private var ktorModuleFunction: KSFunctionDeclaration? = null
-    // Store the path as a String instead of trying to instantiate the KtorController annotation
-    private val ktorControllerClasses: MutableMap<String, KSClassDeclaration> = mutableMapOf()
-    private val ktorServiceClasses: MutableList<KSClassDeclaration> = mutableListOf()
-    private val ktorScheduleClasses: MutableList<KSClassDeclaration> = mutableListOf()
 
-    @OptIn(KspExperimental::class)
+    // Gebruik Sets om duplicaten over meerdere KSP-rondes te voorkomen
+    private val ktorControllerClasses = mutableMapOf<KSClassDeclaration, String>()
+    private val ktorServiceClasses = mutableListOf<KSClassDeclaration>()
+    private val ktorScheduleClasses = mutableListOf<KSClassDeclaration>()
+    private var ktorModuleFunction: KSFunctionDeclaration? = null
+
     override fun process(resolver: Resolver): List<KSAnnotated> {
-        resolver.getNewFiles().forEach { file ->
-            file.declarations.forEach { declaration ->
-                when {
-                    declaration is KSFunctionDeclaration && declaration.isAnnotationPresent(KtorModule::class) -> {
-                        ktorModuleFunction = declaration
-                    }
-                    declaration is KSClassDeclaration && declaration.isAnnotationPresent(KtorController::class) -> {
-                        // Extract the path argument safely without getAnnotationsByType
-                        val annotation = declaration.annotations.firstOrNull { it.shortName.asString() == "KtorController" }
-                        val path = annotation?.arguments?.find { it.name?.asString() == "path" }?.value as? String ?: ""
-                        
-                        ktorControllerClasses[path] = declaration
-                    }
-                    declaration is KSClassDeclaration && declaration.isAnnotationPresent(KtorService::class) -> {
-                        ktorServiceClasses.add(declaration)
-                    }
-                    declaration is KSClassDeclaration && declaration.isAnnotationPresent(KtorSchedule::class) -> {
-                        ktorScheduleClasses.add(declaration)
-                    }
-                }
+        // 1. Zoek de KtorModule functie
+        val moduleSymbols = resolver.getSymbolsWithAnnotation(KtorModule::class.qualifiedName!!)
+        moduleSymbols.filterIsInstance<KSFunctionDeclaration>().forEach {
+            ktorModuleFunction = it
+        }
+
+        // 2. Zoek alle schedules (Vindt nu ALTIJD objecten en klassen, ook nested!)
+        val scheduleSymbols = resolver.getSymbolsWithAnnotation(KtorSchedule::class.qualifiedName!!)
+        scheduleSymbols.filterIsInstance<KSClassDeclaration>().forEach { clazz ->
+            if (!ktorScheduleClasses.contains(clazz)) {
+                ktorScheduleClasses.add(clazz)
             }
         }
-        return emptyList()
-    }
 
-    override fun finish() {
-        ktorModuleFunction?.accept(KtorModuleVisitor(codeGenerator, logger, ktorControllerClasses, ktorServiceClasses, ktorScheduleClasses), Unit)
+        // 3. Zoek alle controllers
+        val controllerSymbols = resolver.getSymbolsWithAnnotation(KtorController::class.qualifiedName!!)
+        controllerSymbols.filterIsInstance<KSClassDeclaration>().forEach { clazz ->
+            val annotation = clazz.annotations.firstOrNull { it.shortName.asString() == "KtorController" }
+            val path = annotation?.arguments?.find { it.name?.asString() == "path" }?.value as? String ?: ""
+            ktorControllerClasses[clazz] = path
+        }
+
+        // 4. Zoek alle services
+        val serviceSymbols = resolver.getSymbolsWithAnnotation(KtorService::class.qualifiedName!!)
+        serviceSymbols.filterIsInstance<KSClassDeclaration>().forEach { clazz ->
+            if (!ktorServiceClasses.contains(clazz)) {
+                ktorServiceClasses.add(clazz)
+            }
+        }
+
+        // 5. Genereer DIRECT zodra we de module functie hebben gevonden en de bestanden verwerkt zijn
+        // We doen dit aan het einde van de ronde waarin de functie beschikbaar is
+        ktorModuleFunction?.let { function ->
+            function.accept(
+                KtorModuleVisitor(codeGenerator, logger, ktorControllerClasses, ktorServiceClasses, ktorScheduleClasses),
+                Unit
+            )
+            // Zet hem op null zodat we hem in een eventuele volgende ronde niet nóg een keer genereren
+            ktorModuleFunction = null
+        }
+
+        return emptyList()
     }
 }

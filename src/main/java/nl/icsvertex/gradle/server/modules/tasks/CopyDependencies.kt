@@ -38,9 +38,20 @@ abstract class CopyDependencies : DefaultTask() {
     @TaskAction
     fun copyDependencies() {
         if(includeDependencies.get()) {
+            // Find the server project by looking for the one that has the server plugin applied
+            val serverProject = project.rootProject.allprojects.find { 
+                it.plugins.hasPlugin("nl.icsvertex.ktor.server") 
+            }
+            
+            val serverClasspath = serverProject?.configurations?.findByName("runtimeClasspath")?.files ?: emptySet()
+            val moduleClasspath = project.configurations.getByName("runtimeClasspath").files
+            
+            // Filter out dependencies that are already provided by the server project
+            val filteredDependencies = moduleClasspath - serverClasspath
+
             project.copy {
-                it.exclude { it.path.contains("-sources") }
-                it.from(project.configurations.getByName("runtimeClasspath"))
+                it.exclude { element -> element.path.contains("-sources") }
+                it.from(filteredDependencies)
                 it.into(buildLocation.get())
             }
         }
